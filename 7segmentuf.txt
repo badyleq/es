@@ -1,0 +1,124 @@
+#define PIOB_PER (volatile unsigned int * const) 0xFFFFF400
+#define PIOB_SODR (volatile unsigned int * const) 0xFFFFF430
+#define PIOB_OER (volatile unsigned int * const) 0xFFFFF410
+#define PIOB_CODR (volatile unsigned int * const) 0xFFFFF434
+ 
+#define PIOC_PER (volatile unsigned int * const) 0xFFFFF600
+#define PIOC_SODR (volatile unsigned int * const) 0xFFFFF630
+#define PIOC_OER (volatile unsigned int * const) 0xFFFFF610
+#define PIOC_CODR (volatile unsigned int * const) 0xFFFFF634
+#define PIOC_PUER (volatile unsigned int * const) 0xFFFFF664
+ 
+#define BASE_PMC (volatile unsigned int * const) 0xFFFFFC00
+#define PMC_PCER (volatile unsigned int * const) 0xFFFFFC10
+ 
+#define PIOC_PDSR (volatile unsigned int * const) 0xFFFFF63C
+ 
+#define LED1 (1<<8)
+#define LED2 (1<<29)
+ 
+#define DIGIT1 (1<<28)
+#define DIGIT2 (1<<30)
+ 
+#define E (1<<20)
+#define D (1<<21)
+#define C (1<<22)
+#define DP (1<<23)
+#define B (1<<24)
+#define A (1<<25)
+#define G (1<<26)
+#define F (1<<27)
+ 
+#define BUTTON1 (1<<5) //c
+#define BUTTON2 (1<<4)
+ 
+void delay(int losd){
+  int i=0;
+  for(i=0;i<1200*losd;i++);
+}
+
+void off_disp(){
+	*(PIOB_SODR)=DIGIT1;
+	*(PIOB_SODR)=DIGIT2;
+}
+
+void setDisplay(int a){
+	if(a==1)
+		*(PIOB_CODR)=DIGIT1;
+
+	else if(a==2)
+		*(PIOB_CODR)=DIGIT2;
+}
+ 
+void set_digit(int a){
+	*(PIOB_CODR)=(A|B|C|D|E|F|G|DP);
+	switch(a){
+		case 0: *(PIOB_SODR)=A|B|C|D|E|F;break;
+		case 1: *(PIOB_SODR)=B|C;break;
+		case 2: *(PIOB_SODR)=A|B|D|E|G;break;
+		case 3: *(PIOB_SODR)=A|B|C|D|G;break;
+		case 4: *(PIOB_SODR)=B|C|F|G;break;
+		case 5: *(PIOB_SODR)=A|C|D|F|G;break;
+		case 6: *(PIOB_SODR)=A|C|D|E|F|G;break;
+		case 7: *(PIOB_SODR)=A|B|C;break;
+		case 8: *(PIOB_SODR)=A|B|C|D|E|F|G;break;
+		case 9: *(PIOB_SODR)=A|B|C|D|F|G;break;
+		default:break;
+	}
+}
+ 
+void refresh(int a, int b){
+	off_disp();
+	set_digit(b);
+	setDisplay(2);
+	delay(7);
+	off_disp();
+	set_digit(a);
+	setDisplay(1);
+	delay(7);
+}
+
+int get1(int a){
+	if (a>9&&a<100)
+		return a/10;
+	else
+		return 0;
+}
+ 
+int get2(int a){
+	if (a>0&&a<100)
+		return a%10;
+	else
+		return 0;
+}
+ 
+int main(void) {
+
+	*(PIOB_PER)=(LED1|DIGIT1|DIGIT2|A|B|C|D|E|F|G|DP);
+	*(PIOB_OER)=(LED1|DIGIT1|DIGIT2|A|B|C|D|E|F|G|DP);
+	*(PIOC_PER)=(BUTTON1);
+	*(PIOC_PUER)=(BUTTON1);
+	*PMC_PCER=(1<<4);
+
+	*(PIOB_CODR)=DIGIT1|DIGIT2;
+
+	*(PIOB_SODR)=(A|B|C|D|E|F|G|DP);
+	delay(1000);
+	*(PIOB_CODR)=(A|B|C|D|E|F|G|DP);
+
+	while(1){
+		int i,a,b,j;
+		for(i=0;i<=99&&i>=0;){
+			a=get1(i);
+			b=get2(i);
+			if(*PIOC_PDSR & BUTTON1)
+				i++;
+			else
+				 i--;
+			for(j=0;j<50;j++)
+				refresh(a,b);
+		}
+	}
+}
+ 
+void dbgu_print_ascii(const char* string){}
